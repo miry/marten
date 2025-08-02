@@ -286,6 +286,37 @@ module Marten
     __DIR__
   end
 
+  private def self.build_information : String
+    # "Marten #{VERSION} [#{Marten.env.id}]\n#{Crystal::DESCRIPTION}"
+    revision_info = ""
+    if Crystal::BUILD_COMMIT
+      revision_info = " revision #{Crystal::BUILD_COMMIT}"
+    end
+    <<-INFO
+      Marten #{VERSION} [#{Marten.env.id}]
+      crystal #{Crystal::VERSION} (#{Crystal::BUILD_DATE}#{revision_info} llvm #{Crystal::LLVM_VERSION}) [#{Crystal::TARGET_TRIPLE}]
+      INFO
+  end
+
+  private def self.debug_server_startup_banner(addresses_str : String, ready_in : Time::Span) : String
+    urls = addresses_str.split(',').map(&.strip).reject(&.empty?)
+    urls = [addresses_str.strip] if urls.empty?
+
+    ms = ready_in.total_milliseconds.round.to_i
+
+    String.build do |s|
+      s << '\n'
+      s << "Marten v#{VERSION} ready in #{ms} ms" << '\n'
+      s << '\n'
+      s << "  ➜  Listening at: #{urls.join(", ")}" << '\n'
+      s << "  ➜  Environment: #{Marten.env.id}" << '\n'
+      s << "  ➜  Crystal: #{Crystal::VERSION}" << '\n'
+      s << "  ➜  LLVM: #{Crystal::LLVM_VERSION}" << '\n'
+      s << '\n'
+      s << "Press CTRL+C to quit" << '\n'
+    end
+  end
+
   private def self.effective_marten_location : String
     if !(root_path = Marten.settings.root_path).nil?
       Path[_marten_app_location]
@@ -318,6 +349,7 @@ module Marten
         override_server_port(port.to_i)
       end
       opts.on("-h", "--help", "Shows this help") do
+        puts build_information
         puts opts
         exit 0
       end
@@ -325,7 +357,7 @@ module Marten
         override_log_level(log_level)
       end
       opts.on("-v", "--version", "Show the build information") do
-        puts build_info
+        puts build_information
         exit 0
       end
     end
