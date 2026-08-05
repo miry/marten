@@ -1074,9 +1074,18 @@ module Marten
                   @instance : Marten::DB::Model,
                   @related_field_id : ::String,
                   query : Marten::DB::Query::SQL::Query({{ @type }})? = nil,
-                  @assign_related : ::Bool = false
+                  @assign_related : ::Bool = false,
+                  @prefetched_relations = [] of ::String,
+                  @custom_query_sets = {} of ::String => Marten::DB::Query::Set::Any,
                 )
-                  super(@instance, @related_field_id, query, @assign_related)
+                  super(
+                    @instance,
+                    @related_field_id,
+                    query,
+                    @assign_related,
+                    @prefetched_relations,
+                    @custom_query_sets,
+                  )
                 end
 
                 {% for queryset_id, block in MODEL_SCOPES[:custom] %}
@@ -1090,7 +1099,9 @@ module Marten
                     instance: @instance,
                     related_field_id: @related_field_id,
                     query: other_query.nil? ? @query.clone : other_query.not_nil!,
-                    assign_related: @assign_related
+                    assign_related: @assign_related,
+                    prefetched_relations: prefetched_relations,
+                    custom_query_sets: custom_query_sets,
                   )
                 end
               end
@@ -1102,7 +1113,9 @@ module Marten
                   @through_related_name : ::String,
                   @through_model_from_field_id : ::String,
                   @through_model_to_field_id : ::String,
-                  query : Marten::DB::Query::SQL::Query({{ @type }})? = nil
+                  query : Marten::DB::Query::SQL::Query({{ @type }})? = nil,
+                  @prefetched_relations = [] of ::String,
+                  @custom_query_sets = {} of ::String => Marten::DB::Query::Set::Any,
                 )
                   super(
                     @instance,
@@ -1110,7 +1123,9 @@ module Marten
                     @through_related_name,
                     @through_model_from_field_id,
                     @through_model_to_field_id,
-                    query
+                    query,
+                    @prefetched_relations,
+                    @custom_query_sets,
                   )
                 end
 
@@ -1127,7 +1142,9 @@ module Marten
                     through_related_name: @through_related_name,
                     through_model_from_field_id: @through_model_from_field_id,
                     through_model_to_field_id: @through_model_to_field_id,
-                    query: other_query.nil? ? @query.clone : other_query.not_nil!
+                    query: other_query.nil? ? @query.clone : other_query.not_nil!,
+                    prefetched_relations: prefetched_relations,
+                    custom_query_sets: custom_query_sets,
                   )
                 end
               end
