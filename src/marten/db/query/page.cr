@@ -68,6 +68,10 @@ module Marten
 
         delegate each, to: @records
 
+        def to_a : Array(M)
+          @records
+        end
+
         private getter paginator
       end
     end
