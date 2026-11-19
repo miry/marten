@@ -54,6 +54,58 @@ describe Marten::Server::Handlers::Middleware do
       ctx.response.headers["X-Middleware"].should eq "1,2"
     end
 
+    it "exposes the resolved response on the request context" do
+      output_io = IO::Memory.new
+      handler = Marten::Server::Handlers::Middleware.new
+      handler.next = HTTP::Handler::HandlerProc.new do |ctx|
+        ctx.response.output = output_io
+        ctx.marten.response = Marten::HTTP::Response.new("It works", status: 200)
+      end
+
+      ctx = HTTP::Server::Context.new(
+        request: ::HTTP::Request.new(
+          method: "GET",
+          resource: "/",
+          headers: HTTP::Headers{"Host" => "example.com"}
+        ),
+        response: ::HTTP::Server::Response.new(io: IO::Memory.new)
+      )
+
+      with_overridden_setting("middleware", [] of Marten::Middleware.class) do
+        handler.call(ctx)
+      end
+
+      ctx.marten.response.should_not be_nil
+      ctx.marten.response.not_nil!.status.should eq 200
+    end
+
+    it "exposes a response produced by a middleware on the request context" do
+      handler = Marten::Server::Handlers::Middleware.new
+      handler.next = HTTP::Handler::HandlerProc.new do |ctx|
+        ctx.marten.response = Marten::HTTP::Response.new("It works", status: 200)
+      end
+
+      ctx = HTTP::Server::Context.new(
+        request: ::HTTP::Request.new(
+          method: "GET",
+          resource: "/",
+          headers: HTTP::Headers{"Host" => "example.com"}
+        ),
+        response: ::HTTP::Server::Response.new(io: IO::Memory.new)
+      )
+
+      with_overridden_setting(
+        "middleware",
+        [Marten::Server::Handlers::MiddlewareSpec::EarlyResponseMiddleware]
+      ) do
+        handler.call(ctx)
+      end
+
+      ctx.marten.response.should_not be_nil
+      ctx.marten.response.not_nil!.status.should eq 404
+      ctx.marten.response.not_nil!.headers["X-Early-Response"].should eq "yes"
+    end
+
     it "raises if the request body exceeds the configured maximum size" do
       handler = Marten::Server::Handlers::Middleware.new
       handler.next = HTTP::Handler::HandlerProc.new do |ctx|
@@ -80,6 +132,14 @@ describe Marten::Server::Handlers::Middleware do
 end
 
 module Marten::Server::Handlers::MiddlewareSpec
+  class EarlyResponseMiddleware < Marten::Middleware
+    def call(request : Marten::HTTP::Request, get_response : Proc(Marten::HTTP::Response)) : Marten::HTTP::Response
+      response = Marten::HTTP::Response.new("Not found", status: 404)
+      response.headers["X-Early-Response"] = "yes"
+      response
+    end
+  end
+
   class Middleware1 < Marten::Middleware
     def call(request : Marten::HTTP::Request, get_response : Proc(Marten::HTTP::Response)) : Marten::HTTP::Response
       response = get_response.call

@@ -21,6 +21,11 @@ module Marten
             middleware_chain.first.chain(context.marten.request, -> { get_final_response(context) })
           end
 
+          # Keep the resolved response available on the request context so that downstream
+          # consumers (such as the test client) can access it even when it was produced
+          # by a middleware instead of the routed handler.
+          context.marten.response = response
+
           # At this point the final HTTP response has to be written to the server response.
           convert_handler_response(context, response)
 
